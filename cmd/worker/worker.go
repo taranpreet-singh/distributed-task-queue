@@ -20,7 +20,7 @@ func main() {
 
 	if *workerName == "" {
 		host, _ := os.Hostname()
-		*workerName = fmt.Sprint("worker-%w", host)
+		*workerName = fmt.Sprintf("worker-%s", host)
 	}
 
 	cfg := config.LoadConfig()
@@ -28,13 +28,14 @@ func main() {
 	w, err := consumer.New(*cfg, *workerName)
 	if err != nil {
 		slog.Error("Failed to create worker", "Error", err)
+		os.Exit(1)
 	}
 
 	w.RegisterHandler("PrintFibonacci", fibonacci)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	slog.Info("Worker started", "name", workerName, "group", cfg.ConsumerGroupKey, "stream", cfg.StreamKey)
+	slog.Info("Worker started", "name", *workerName, "group", cfg.ConsumerGroupKey, "stream", cfg.StreamKey)
 
 	if err := w.Run(ctx); err != nil {
 		slog.Error("Worker entered in an Error", "Error", err)

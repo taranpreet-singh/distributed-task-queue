@@ -39,7 +39,7 @@ func main() {
 
 		id, err := p.Publish(ctx, task)
 		if err != nil {
-			slog.Error("Failed to publish a task. %w", "Error", err)
+			slog.Error("Failed to publish a task", "Error", err)
 		}
 
 		slog.Info("Published", "Task_Id", id, "Type", *taskType, "index", i)

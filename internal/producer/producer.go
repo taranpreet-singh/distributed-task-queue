@@ -66,7 +66,10 @@ func (p *Producer) PublishBatch(ctx context.Context, tasks []Task) ([]string, er
 
 	cmds := make([]*redis.StringCmd, len(tasks))
 	for i, t := range tasks {
-		args, _ := getXaddArgs(p.config.StreamKey, &t)
+		args, err := getXaddArgs(p.config.StreamKey, &t)
+		if err != nil {
+			return nil, fmt.Errorf("Marshal failed for task %d: %w", i, err)
+		}
 
 		cmds[i] = pipe.XAdd(ctx, args)
 	}

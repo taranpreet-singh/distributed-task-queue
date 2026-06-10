@@ -43,8 +43,8 @@ func New(cfg config.Config, workerName string) (*Worker, error) {
 	}
 
 	rdb := redis.NewClient(opts)
-	if rdb.Ping(context.Background()).Err() != nil {
-		return nil, err
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		return nil, fmt.Errorf("Redis ping: &w", err)
 	}
 
 	dlq := dlq.New(rdb, cfg)
@@ -54,7 +54,7 @@ func New(cfg config.Config, workerName string) (*Worker, error) {
 		cfg:     cfg,
 		name:    workerName,
 		handler: make(map[string]HandlerFunc),
-		sem:     make(chan struct{}, 10),
+		sem:     make(chan struct{}, 10), //TODO: Add a concurrency config
 		dlq:     dlq,
 	}, nil
 }
@@ -65,7 +65,7 @@ func (w *Worker) RegisterHandler(taskType string, handler HandlerFunc) {
 
 func (w *Worker) Run(ctx context.Context) error {
 	if err := w.ensureConsumerGroupExists(ctx); err != nil {
-		slog.Error("Failed to create Consumer Group", "Error", err)
+		return err
 	}
 
 	if err := w.reclaimPending(ctx); err != nil {
@@ -172,15 +172,15 @@ func (w *Worker) process(ctx context.Context, entry redis.XMessage) {
 }
 
 func (w *Worker) handleFailure(ctx context.Context, entry redis.XMessage, msg Message, err error) {
-	pending, err := w.rdb.XPendingExt(ctx, &redis.XPendingExtArgs{
+	pending, pelErr := w.rdb.XPendingExt(ctx, &redis.XPendingExtArgs{
 		Stream: w.cfg.StreamKey,
 		Group:  w.cfg.ConsumerGroupKey,
 		Start:  msg.EntryID,
 		End:    msg.EntryID,
 		Count:  1,
 	}).Result()
-	if err != nil {
-		slog.Error("Could not read PEL entry", "Error", err)
+	if pelErr != nil {
+		slog.Error("Could not read PEL entry", "Error", pelErr)
 		return
 	}
 
@@ -191,6 +191,7 @@ func (w *Worker) handleFailure(ctx context.Context, entry redis.XMessage, msg Me
 		if err := w.dlq.Send(ctx, entry, msg.Type, err); err != nil {
 			slog.Error("dlq send failure: %w", "id", entry.ID, "Error", err)
 		}
+		_ = w.rdb.XAck(ctx, w.cfg.StreamKey, w.cfg.ConsumerGroupKey, entry.ID)
 		return
 	}
 	// let it be, it will be auto-claimed after the idle time is over
