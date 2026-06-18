@@ -30,6 +30,7 @@ func main() {
 		slog.Error("Failed to create worker", "Error", err)
 		os.Exit(1)
 	}
+	defer w.Close()
 
 	w.RegisterHandler("PrintFibonacci", fibonacci)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	taskType := flag.String("type", "printFibinaci", "Type of the task")
+	taskType := flag.String("type", "PrintFibonacci", "Type of the task")
 	count := flag.Int("count", 5, "Number of tasks to produce")
 	delay := flag.Int("delay", 500, "Delay between producing tasks in ms")
 	flag.Parse()
@@ -22,7 +22,7 @@ func main() {
 
 	p, err := producer.New(cfg)
 	if err != nil {
-		slog.Error("Failed to create a producer %w", "Error", err)
+		slog.Error("failed to create producer", "err", err)
 		os.Exit(1)
 	}
 	defer p.Close()
@@ -39,10 +39,11 @@ func main() {
 
 		id, err := p.Publish(ctx, task)
 		if err != nil {
-			slog.Error("Failed to publish a task", "Error", err)
+			slog.Error("failed to publish task", "err", err, "index", i)
+			continue
 		}
 
-		slog.Info("Published", "Task_Id", id, "Type", *taskType, "index", i)
+		slog.Info("published", "task_id", id, "type", *taskType, "index", i)
 
 		if *delay > 0 {
 			time.Sleep(time.Duration(*delay) * time.Millisecond)

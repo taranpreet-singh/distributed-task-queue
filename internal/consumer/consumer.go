@@ -6,12 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	dlq "github.com/dist_task_que_prac/internal/DLQ"
 	"github.com/dist_task_que_prac/internal/config"
+	dlq "github.com/dist_task_que_prac/internal/dlq"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -30,7 +31,7 @@ type Worker struct {
 	rdb     *redis.Client
 	cfg     config.Config
 	name    string
-	handler map[string]HandlerFunc // "video-processing": ProcessVideo()
+	handler map[string]HandlerFunc
 	sem     chan struct{}
 	wg      sync.WaitGroup
 	dlq     *dlq.DLQ
@@ -44,23 +45,29 @@ func New(cfg config.Config, workerName string) (*Worker, error) {
 
 	rdb := redis.NewClient(opts)
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
-		return nil, fmt.Errorf("Redis ping: &w", err)
+		return nil, fmt.Errorf("redis ping: %w", err)
 	}
 
-	dlq := dlq.New(rdb, cfg)
+	d := dlq.New(rdb, cfg)
 
 	return &Worker{
 		rdb:     rdb,
 		cfg:     cfg,
 		name:    workerName,
 		handler: make(map[string]HandlerFunc),
-		sem:     make(chan struct{}, 10), //TODO: Add a concurrency config
-		dlq:     dlq,
+		sem:     make(chan struct{}, cfg.Concurrency),
+		dlq:     d,
 	}, nil
 }
 
 func (w *Worker) RegisterHandler(taskType string, handler HandlerFunc) {
 	w.handler[taskType] = handler
+}
+
+// Close waits for all in-flight handlers to finish and then closes the Redis connection.
+func (w *Worker) Close() error {
+	w.wg.Wait()
+	return w.rdb.Close()
 }
 
 func (w *Worker) Run(ctx context.Context) error {
@@ -69,13 +76,21 @@ func (w *Worker) Run(ctx context.Context) error {
 	}
 
 	if err := w.reclaimPending(ctx); err != nil {
-		slog.Warn("Error reclaiming pending tasks", "Error", err)
+		slog.Warn("error reclaiming pending tasks on startup", "err", err)
 	}
+
+	reclaimTicker := time.NewTicker(30 * time.Second)
+	defer reclaimTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
+			w.wg.Wait()
 			return nil
+		case <-reclaimTicker.C:
+			if err := w.reclaimPending(ctx); err != nil {
+				slog.Warn("periodic reclaim error", "err", err)
+			}
 		default:
 		}
 
@@ -89,10 +104,10 @@ func (w *Worker) Run(ctx context.Context) error {
 
 		if err != nil {
 			if errors.Is(err, redis.Nil) {
-				// No new messages in block window; loop and try again.
 				continue
 			}
 			if errors.Is(err, context.Canceled) {
+				w.wg.Wait()
 				return nil
 			}
 			slog.Error("xreadgroup error", "err", err)
@@ -107,13 +122,14 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 func (w *Worker) reclaimPending(ctx context.Context) error {
+	cursor := "0-0"
 	for {
-		msgs, _, err := w.rdb.XAutoClaim(ctx, &redis.XAutoClaimArgs{
+		msgs, nextCursor, err := w.rdb.XAutoClaim(ctx, &redis.XAutoClaimArgs{
 			Stream:   w.cfg.StreamKey,
 			Group:    w.cfg.ConsumerGroupKey,
 			Consumer: w.name,
 			MinIdle:  time.Duration(w.cfg.ClaimedIdleMs) * time.Millisecond,
-			Start:    "0-0",
+			Start:    cursor,
 			Count:    w.cfg.BatchSize,
 		}).Result()
 		if err != nil {
@@ -123,13 +139,15 @@ func (w *Worker) reclaimPending(ctx context.Context) error {
 			return fmt.Errorf("xautoclaim: %w", err)
 		}
 
-		if len(msgs) == 0 {
-			return nil
+		if len(msgs) > 0 {
+			slog.Info("reclaimed pending messages", "count", len(msgs))
+			w.processXMessages(ctx, msgs)
 		}
 
-		slog.Info("reclaimed pending messages", "count", len(msgs))
-
-		w.processXMessages(ctx, msgs)
+		if nextCursor == "0-0" {
+			return nil
+		}
+		cursor = nextCursor
 	}
 }
 
@@ -149,26 +167,32 @@ func (w *Worker) process(ctx context.Context, entry redis.XMessage) {
 	msg, err := decode(entry)
 	if err != nil {
 		slog.Error("decode failed", "id", entry.ID, "err", err)
-		_ = w.rdb.XAck(ctx, w.cfg.StreamKey, w.cfg.ConsumerGroupKey, entry.ID)
+		if dlqErr := w.dlq.Send(ctx, entry, "unknown", err); dlqErr != nil {
+			slog.Error("dlq send failed for decode error", "id", entry.ID, "err", dlqErr)
+		}
+		w.xack(ctx, entry.ID)
 		return
 	}
 
 	handler, ok := w.handler[msg.Type]
 	if !ok {
 		slog.Warn("no handler registered", "task_type", msg.Type, "id", entry.ID)
-		_ = w.rdb.XAck(ctx, w.cfg.StreamKey, w.cfg.ConsumerGroupKey, entry.ID)
+		noHandlerErr := fmt.Errorf("no handler registered for task_type %q", msg.Type)
+		if dlqErr := w.dlq.Send(ctx, entry, msg.Type, noHandlerErr); dlqErr != nil {
+			slog.Error("dlq send failed for unknown handler", "id", entry.ID, "err", dlqErr)
+		}
+		w.xack(ctx, entry.ID)
 		return
 	}
 
 	if handlerErr := handler(ctx, &msg); handlerErr != nil {
 		slog.Error("handler error", "task_type", msg.Type, "id", entry.ID, "err", handlerErr)
-		// metrics.TasksFailed.WithLabelValues(msg.TaskType, w.name).Inc()
 		w.handleFailure(ctx, entry, msg, handlerErr)
 		return
 	}
 
-	_ = w.rdb.XAck(ctx, w.cfg.StreamKey, w.cfg.ConsumerGroupKey, entry.ID)
-	slog.Info("Task completed", "task_type", msg.Type, "id", entry.ID)
+	w.xack(ctx, entry.ID)
+	slog.Info("task completed", "task_type", msg.Type, "id", entry.ID)
 }
 
 func (w *Worker) handleFailure(ctx context.Context, entry redis.XMessage, msg Message, err error) {
@@ -180,36 +204,44 @@ func (w *Worker) handleFailure(ctx context.Context, entry redis.XMessage, msg Me
 		Count:  1,
 	}).Result()
 	if pelErr != nil {
-		slog.Error("Could not read PEL entry", "Error", pelErr)
+		slog.Error("could not read PEL entry", "id", msg.EntryID, "err", pelErr)
+		return
+	}
+	if len(pending) == 0 {
+		slog.Warn("PEL entry not found, task may have been claimed by another worker", "id", msg.EntryID)
 		return
 	}
 
 	deliveryCount := pending[0].RetryCount
 
 	if deliveryCount >= int64(w.cfg.MaxRetries) {
-		slog.Error("Max retries exceeded, Moving to DLQ", "id", msg.EntryID, "delivery", deliveryCount)
-		if err := w.dlq.Send(ctx, entry, msg.Type, err); err != nil {
-			slog.Error("dlq send failure: %w", "id", entry.ID, "Error", err)
+		slog.Error("max retries exceeded, moving to DLQ", "id", msg.EntryID, "delivery", deliveryCount)
+		if dlqErr := w.dlq.Send(ctx, entry, msg.Type, err); dlqErr != nil {
+			slog.Error("dlq send failure", "id", entry.ID, "err", dlqErr)
 		}
-		_ = w.rdb.XAck(ctx, w.cfg.StreamKey, w.cfg.ConsumerGroupKey, entry.ID)
+		w.xack(ctx, entry.ID)
 		return
 	}
-	// let it be, it will be auto-claimed after the idle time is over
+	// task stays in PEL; will be reclaimed after ClaimedIdleMs
+}
+
+// xack is a helper that ACKs a message and logs if it fails.
+func (w *Worker) xack(ctx context.Context, id string) {
+	if err := w.rdb.XAck(ctx, w.cfg.StreamKey, w.cfg.ConsumerGroupKey, id).Err(); err != nil {
+		slog.Error("xack failed", "id", id, "err", err)
+	}
 }
 
 func (w *Worker) ensureConsumerGroupExists(ctx context.Context) error {
-	// this will create the Stream if it doesn't exists. But, will thorw an error for the group
 	err := w.rdb.XGroupCreateMkStream(ctx, w.cfg.StreamKey, w.cfg.ConsumerGroupKey, "0").Err()
-
 	if err != nil {
 		if strings.Contains(err.Error(), "BUSYGROUP") {
-			fmt.Println("Consumer Group already exists, skipping creation")
+			slog.Debug("consumer group already exists, skipping creation")
 			return nil
 		}
-		return fmt.Errorf("Error creating Group: %w", err)
+		return fmt.Errorf("error creating group: %w", err)
 	}
-
-	fmt.Println("Consumer group created successfully!")
+	slog.Info("consumer group created", "group", w.cfg.ConsumerGroupKey, "stream", w.cfg.StreamKey)
 	return nil
 }
 
@@ -223,13 +255,26 @@ func decode(msg redis.XMessage) (Message, error) {
 
 	var payload map[string]any
 	if err := json.Unmarshal([]byte(get("payload")), &payload); err != nil {
-		return Message{}, fmt.Errorf("Payload unmarshal failed: %w", err)
+		return Message{}, fmt.Errorf("payload unmarshal failed: %w", err)
 	}
 
 	var priority int
-	fmt.Sscanf(get("priority"), "%d", &priority)
+	if raw := get("priority"); raw != "" {
+		if p, err := strconv.Atoi(raw); err == nil {
+			priority = p
+		} else {
+			slog.Warn("failed to parse priority field", "id", msg.ID, "value", raw)
+		}
+	}
+
 	var createdAt int64
-	fmt.Sscanf(get("created_at"), "%d", &createdAt)
+	if raw := get("created_at"); raw != "" {
+		if c, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			createdAt = c
+		} else {
+			slog.Warn("failed to parse created_at field", "id", msg.ID, "value", raw)
+		}
+	}
 
 	return Message{
 		EntryID:   msg.ID,

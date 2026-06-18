@@ -23,7 +23,10 @@ func New(rdb *redis.Client, cfg config.Config) *DLQ {
 }
 
 func (dlq *DLQ) Send(ctx context.Context, msg redis.XMessage, taskType string, reason error) error {
-	msgJson, _ := json.Marshal(msg.Values)
+	msgJson, marshalErr := json.Marshal(msg.Values)
+	if marshalErr != nil {
+		return fmt.Errorf("marshal dlq message: %w", marshalErr)
+	}
 	_, err := dlq.rdb.XAdd(ctx, &redis.XAddArgs{
 		Stream: dlq.cfg.DLQStreamKey,
 		Values: map[string]any{

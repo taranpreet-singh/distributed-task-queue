@@ -17,7 +17,8 @@ type Config struct {
 	DLQStreamKey     string
 	ClaimedIdleMs    int // TODO: Better to add heartbeat mechanism instead of idle time.
 	// TODO: This will reset the idle time when the task is still running, let say for each 10 s.
-	BatchSize int64
+	BatchSize   int64
+	Concurrency int
 }
 
 func LoadConfig() *Config {
@@ -34,6 +35,7 @@ func LoadConfig() *Config {
 		DLQStreamKey:     getEnv("DLQ_STREAM_KEY", "task:dlq"),
 		ClaimedIdleMs:    getEnvInt("CLAIMED_IDLE_MS", 60000), // if a task is idle for ClaimedIdleMs, it is considerd as failed and will be claimed by other consumers
 		BatchSize:        int64(getEnvInt("BATCH_SIZE", 10)),
+		Concurrency:      getEnvInt("CONCURRENCY", 10),
 	}
 }
 

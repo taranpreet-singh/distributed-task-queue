@@ -28,8 +28,8 @@ func New(cfg *config.Config) (*Producer, error) {
 		return nil, fmt.Errorf("Redis URL Parsing Failed: %w", err)
 	}
 	rdb := redis.NewClient(opts)
-	if rdb.Ping(context.Background()).Err() != nil {
-		return nil, err
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		return nil, fmt.Errorf("redis ping failed: %w", err)
 	}
 
 	return &Producer{
@@ -94,6 +94,8 @@ func getXaddArgs(streamKey string, task *Task) (*redis.XAddArgs, error) {
 
 	return &redis.XAddArgs{
 		Stream: streamKey,
+		MaxLen: 100000,
+		Approx: true,
 		Values: map[string]any{
 			"task_id":    uuid.NewString(),
 			"task_type":  task.Type,
