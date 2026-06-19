@@ -12,14 +12,21 @@ import (
 	"time"
 
 	"github.com/dist_task_que_prac/internal/config"
-	dlq "github.com/dist_task_que_prac/internal/dlq"
+	"github.com/dist_task_que_prac/internal/dlq"
 	"github.com/redis/go-redis/v9"
+)
+
+type TaskType string
+
+const (
+	TaskSendWebhook TaskType = "SendWebhook"
+	TaskSendEmail   TaskType = "SendEmail"
 )
 
 type Message struct {
 	EntryID   string
 	TaskID    string
-	Type      string
+	Type      TaskType
 	Payload   map[string]any
 	Priority  int
 	CreatedAt int64
@@ -31,14 +38,14 @@ type Worker struct {
 	rdb     *redis.Client
 	cfg     config.Config
 	name    string
-	handler map[string]HandlerFunc
+	handler map[TaskType]HandlerFunc
 	sem     chan struct{}
 	wg      sync.WaitGroup
 	dlq     *dlq.DLQ
 }
 
 func New(cfg config.Config, workerName string) (*Worker, error) {
-	opts, err := redis.ParseURL(cfg.RedisUrl)
+	opts, err := redis.ParseURL(cfg.Redis.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -48,19 +55,19 @@ func New(cfg config.Config, workerName string) (*Worker, error) {
 		return nil, fmt.Errorf("redis ping: %w", err)
 	}
 
-	d := dlq.New(rdb, cfg)
+	d := dlq.New(rdb, cfg.Redis.DLQStreamKey)
 
 	return &Worker{
 		rdb:     rdb,
 		cfg:     cfg,
 		name:    workerName,
-		handler: make(map[string]HandlerFunc),
+		handler: make(map[TaskType]HandlerFunc),
 		sem:     make(chan struct{}, cfg.Concurrency),
 		dlq:     d,
 	}, nil
 }
 
-func (w *Worker) RegisterHandler(taskType string, handler HandlerFunc) {
+func (w *Worker) RegisterHandler(taskType TaskType, handler HandlerFunc) {
 	w.handler[taskType] = handler
 }
 
@@ -85,7 +92,6 @@ func (w *Worker) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			w.wg.Wait()
 			return nil
 		case <-reclaimTicker.C:
 			if err := w.reclaimPending(ctx); err != nil {
@@ -95,11 +101,11 @@ func (w *Worker) Run(ctx context.Context) error {
 		}
 
 		msgs, err := w.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Streams:  []string{w.cfg.StreamKey, ">"},
-			Group:    w.cfg.ConsumerGroupKey,
+			Streams:  []string{w.cfg.Redis.StreamKey, ">"},
+			Group:    w.cfg.Redis.ConsumerGroupKey,
 			Consumer: w.name,
-			Block:    time.Duration(w.cfg.BlockMs) * time.Millisecond,
-			Count:    w.cfg.BatchSize,
+			Block:    time.Duration(w.cfg.Redis.BlockMs) * time.Millisecond,
+			Count:    w.cfg.Redis.BatchSize,
 		}).Result()
 
 		if err != nil {
@@ -107,7 +113,6 @@ func (w *Worker) Run(ctx context.Context) error {
 				continue
 			}
 			if errors.Is(err, context.Canceled) {
-				w.wg.Wait()
 				return nil
 			}
 			slog.Error("xreadgroup error", "err", err)
@@ -125,12 +130,12 @@ func (w *Worker) reclaimPending(ctx context.Context) error {
 	cursor := "0-0"
 	for {
 		msgs, nextCursor, err := w.rdb.XAutoClaim(ctx, &redis.XAutoClaimArgs{
-			Stream:   w.cfg.StreamKey,
-			Group:    w.cfg.ConsumerGroupKey,
+			Stream:   w.cfg.Redis.StreamKey,
+			Group:    w.cfg.Redis.ConsumerGroupKey,
 			Consumer: w.name,
-			MinIdle:  time.Duration(w.cfg.ClaimedIdleMs) * time.Millisecond,
+			MinIdle:  time.Duration(w.cfg.Redis.ClaimedIdleMs) * time.Millisecond,
 			Start:    cursor,
-			Count:    w.cfg.BatchSize,
+			Count:    w.cfg.Redis.BatchSize,
 		}).Result()
 		if err != nil {
 			if errors.Is(err, redis.Nil) {
@@ -178,12 +183,15 @@ func (w *Worker) process(ctx context.Context, entry redis.XMessage) {
 	if !ok {
 		slog.Warn("no handler registered", "task_type", msg.Type, "id", entry.ID)
 		noHandlerErr := fmt.Errorf("no handler registered for task_type %q", msg.Type)
-		if dlqErr := w.dlq.Send(ctx, entry, msg.Type, noHandlerErr); dlqErr != nil {
+		if dlqErr := w.dlq.Send(ctx, entry, string(msg.Type), noHandlerErr); dlqErr != nil {
 			slog.Error("dlq send failed for unknown handler", "id", entry.ID, "err", dlqErr)
 		}
 		w.xack(ctx, entry.ID)
 		return
 	}
+
+	stopHeartbeat := w.startHeartbeat(ctx, entry.ID)
+	defer stopHeartbeat()
 
 	if handlerErr := handler(ctx, &msg); handlerErr != nil {
 		slog.Error("handler error", "task_type", msg.Type, "id", entry.ID, "err", handlerErr)
@@ -197,8 +205,8 @@ func (w *Worker) process(ctx context.Context, entry redis.XMessage) {
 
 func (w *Worker) handleFailure(ctx context.Context, entry redis.XMessage, msg Message, err error) {
 	pending, pelErr := w.rdb.XPendingExt(ctx, &redis.XPendingExtArgs{
-		Stream: w.cfg.StreamKey,
-		Group:  w.cfg.ConsumerGroupKey,
+		Stream: w.cfg.Redis.StreamKey,
+		Group:  w.cfg.Redis.ConsumerGroupKey,
 		Start:  msg.EntryID,
 		End:    msg.EntryID,
 		Count:  1,
@@ -216,7 +224,7 @@ func (w *Worker) handleFailure(ctx context.Context, entry redis.XMessage, msg Me
 
 	if deliveryCount >= int64(w.cfg.MaxRetries) {
 		slog.Error("max retries exceeded, moving to DLQ", "id", msg.EntryID, "delivery", deliveryCount)
-		if dlqErr := w.dlq.Send(ctx, entry, msg.Type, err); dlqErr != nil {
+		if dlqErr := w.dlq.Send(ctx, entry, string(msg.Type), err); dlqErr != nil {
 			slog.Error("dlq send failure", "id", entry.ID, "err", dlqErr)
 		}
 		w.xack(ctx, entry.ID)
@@ -225,15 +233,45 @@ func (w *Worker) handleFailure(ctx context.Context, entry redis.XMessage, msg Me
 	// task stays in PEL; will be reclaimed after ClaimedIdleMs
 }
 
+// startHeartbeat periodically calls XCLAIM to reset the idle timer on an in-flight
+// entry, preventing other workers from stealing it during long-running handlers.
+// Returns a stop function that must be called (via defer) when the handler finishes.
+func (w *Worker) startHeartbeat(ctx context.Context, id string) func() {
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(time.Duration(w.cfg.Redis.HeartbeatMs) * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := w.rdb.XClaim(ctx, &redis.XClaimArgs{
+					Stream:   w.cfg.Redis.StreamKey,
+					Group:    w.cfg.Redis.ConsumerGroupKey,
+					Consumer: w.name,
+					MinIdle:  0,
+					Messages: []string{id},
+				}).Err(); err != nil {
+					slog.Warn("heartbeat xclaim failed", "id", id, "err", err)
+				}
+			}
+		}
+	}()
+	return func() { close(done) }
+}
+
 // xack is a helper that ACKs a message and logs if it fails.
 func (w *Worker) xack(ctx context.Context, id string) {
-	if err := w.rdb.XAck(ctx, w.cfg.StreamKey, w.cfg.ConsumerGroupKey, id).Err(); err != nil {
+	if err := w.rdb.XAck(ctx, w.cfg.Redis.StreamKey, w.cfg.Redis.ConsumerGroupKey, id).Err(); err != nil {
 		slog.Error("xack failed", "id", id, "err", err)
 	}
 }
 
 func (w *Worker) ensureConsumerGroupExists(ctx context.Context) error {
-	err := w.rdb.XGroupCreateMkStream(ctx, w.cfg.StreamKey, w.cfg.ConsumerGroupKey, "0").Err()
+	err := w.rdb.XGroupCreateMkStream(ctx, w.cfg.Redis.StreamKey, w.cfg.Redis.ConsumerGroupKey, "0").Err()
 	if err != nil {
 		if strings.Contains(err.Error(), "BUSYGROUP") {
 			slog.Debug("consumer group already exists, skipping creation")
@@ -241,7 +279,7 @@ func (w *Worker) ensureConsumerGroupExists(ctx context.Context) error {
 		}
 		return fmt.Errorf("error creating group: %w", err)
 	}
-	slog.Info("consumer group created", "group", w.cfg.ConsumerGroupKey, "stream", w.cfg.StreamKey)
+	slog.Info("consumer group created", "group", w.cfg.Redis.ConsumerGroupKey, "stream", w.cfg.Redis.StreamKey)
 	return nil
 }
 
@@ -279,7 +317,7 @@ func decode(msg redis.XMessage) (Message, error) {
 	return Message{
 		EntryID:   msg.ID,
 		TaskID:    get("task_id"),
-		Type:      get("task_type"),
+		Type:      TaskType(get("task_type")),
 		Payload:   payload,
 		Priority:  priority,
 		CreatedAt: createdAt,

@@ -18,12 +18,12 @@ type Task struct {
 }
 
 type Producer struct {
-	rdb    *redis.Client
-	config *config.Config
+	rdb *redis.Client
+	cfg config.Config
 }
 
-func New(cfg *config.Config) (*Producer, error) {
-	opts, err := redis.ParseURL(cfg.RedisUrl)
+func New(cfg config.Config) (*Producer, error) {
+	opts, err := redis.ParseURL(cfg.Redis.URL)
 	if err != nil {
 		return nil, fmt.Errorf("Redis URL Parsing Failed: %w", err)
 	}
@@ -33,8 +33,8 @@ func New(cfg *config.Config) (*Producer, error) {
 	}
 
 	return &Producer{
-		rdb:    rdb,
-		config: cfg,
+		rdb: rdb,
+		cfg: cfg,
 	}, nil
 }
 
@@ -43,7 +43,7 @@ func (p *Producer) Close() error {
 }
 
 func (p *Producer) Publish(ctx context.Context, task Task) (string, error) {
-	args, err := getXaddArgs(p.config.StreamKey, &task)
+	args, err := getXaddArgs(p.cfg.Redis.StreamKey, &task)
 	if err != nil {
 		return "", err
 	}
@@ -57,16 +57,12 @@ func (p *Producer) Publish(ctx context.Context, task Task) (string, error) {
 	return id, nil
 }
 
-func (p *Producer) StreamLen(ctx context.Context) (int64, error) {
-	return p.rdb.XLen(ctx, p.config.StreamKey).Result()
-}
-
 func (p *Producer) PublishBatch(ctx context.Context, tasks []Task) ([]string, error) {
 	pipe := p.rdb.Pipeline()
 
 	cmds := make([]*redis.StringCmd, len(tasks))
 	for i, t := range tasks {
-		args, err := getXaddArgs(p.config.StreamKey, &t)
+		args, err := getXaddArgs(p.cfg.Redis.StreamKey, &t)
 		if err != nil {
 			return nil, fmt.Errorf("Marshal failed for task %d: %w", i, err)
 		}
@@ -80,7 +76,7 @@ func (p *Producer) PublishBatch(ctx context.Context, tasks []Task) ([]string, er
 
 	id := make([]string, len(tasks))
 	for i, cmd := range cmds {
-		id[i] = cmd.Val() // Returns the entryId for the task created in redis. cmd.Val (Result) will be populated only after pipeline is executed
+		id[i] = cmd.Val()
 	}
 
 	return id, nil

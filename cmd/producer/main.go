@@ -5,17 +5,61 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"os"
 	"time"
 
 	"github.com/dist_task_que_prac/internal/config"
+	"github.com/dist_task_que_prac/internal/consumer"
 	"github.com/dist_task_que_prac/internal/producer"
 )
 
+const webhookURL = "https://webhook.site/e440f304-5cf4-401e-9760-ee0c54bbf874" // replace with your webhook.site URL
+
+var emailRecipients = []string{
+	"alice@example.com",
+	"bob@example.com",
+	"charlie@example.com",
+}
+
+var emailSubjects = []string{
+	"Your order has been placed",
+	"Welcome to our platform",
+	"Password reset request",
+	"Weekly digest",
+}
+
+func randomWebhookTask(i int) producer.Task {
+	return producer.Task{
+		Type: string(consumer.TaskSendWebhook),
+		Payload: map[string]any{
+			"url": webhookURL,
+			"body": map[string]any{
+				"event": "task.created",
+				"index": i,
+				"data":  fmt.Sprintf("payload-%d", i),
+			},
+			"headers": map[string]any{
+				"X-Task-Index": fmt.Sprintf("%d", i),
+			},
+		},
+	}
+}
+
+func randomEmailTask(i int) producer.Task {
+	return producer.Task{
+		Type: string(consumer.TaskSendEmail),
+		Payload: map[string]any{
+			"to":      emailRecipients[rand.Intn(len(emailRecipients))],
+			"subject": emailSubjects[rand.Intn(len(emailSubjects))],
+			"body":    fmt.Sprintf("This is automated email #%d sent via the task queue.", i),
+		},
+	}
+}
+
 func main() {
-	taskType := flag.String("type", "PrintFibonacci", "Type of the task")
-	count := flag.Int("count", 5, "Number of tasks to produce")
-	delay := flag.Int("delay", 500, "Delay between producing tasks in ms")
+	count := flag.Int("count", 10, "Number of tasks to produce")
+	delay := flag.Int("delay", 500, "Delay between tasks in ms")
 	flag.Parse()
 
 	cfg := config.LoadConfig()
@@ -29,12 +73,11 @@ func main() {
 
 	ctx := context.Background()
 	for i := range *count {
-		task := producer.Task{
-			Type: *taskType,
-			Payload: map[string]any{
-				"index":   i,
-				"message": fmt.Sprintf("task-%d", i),
-			},
+		var task producer.Task
+		if rand.Intn(2) == 0 {
+			task = randomWebhookTask(i)
+		} else {
+			task = randomEmailTask(i)
 		}
 
 		id, err := p.Publish(ctx, task)
@@ -43,7 +86,7 @@ func main() {
 			continue
 		}
 
-		slog.Info("published", "task_id", id, "type", *taskType, "index", i)
+		slog.Info("published", "task_id", id, "type", task.Type, "index", i)
 
 		if *delay > 0 {
 			time.Sleep(time.Duration(*delay) * time.Millisecond)
