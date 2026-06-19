@@ -6,20 +6,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dist_task_que_prac/internal/config"
 	"github.com/redis/go-redis/v9"
 )
 
 type DLQ struct {
-	rdb *redis.Client
-	cfg config.Config
+	rdb       *redis.Client
+	streamKey string
 }
 
-func New(rdb *redis.Client, cfg config.Config) *DLQ {
-	return &DLQ{
-		rdb: rdb,
-		cfg: cfg,
-	}
+func New(rdb *redis.Client, streamKey string) *DLQ {
+	return &DLQ{rdb: rdb, streamKey: streamKey}
 }
 
 func (dlq *DLQ) Send(ctx context.Context, msg redis.XMessage, taskType string, reason error) error {
@@ -28,7 +24,7 @@ func (dlq *DLQ) Send(ctx context.Context, msg redis.XMessage, taskType string, r
 		return fmt.Errorf("marshal dlq message: %w", marshalErr)
 	}
 	_, err := dlq.rdb.XAdd(ctx, &redis.XAddArgs{
-		Stream: dlq.cfg.DLQStreamKey,
+		Stream: dlq.streamKey,
 		Values: map[string]any{
 			"entryId":   msg.ID,
 			"reason":    reason.Error(),
