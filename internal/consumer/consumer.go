@@ -13,6 +13,7 @@ import (
 
 	"github.com/dist_task_que_prac/internal/config"
 	"github.com/dist_task_que_prac/internal/dlq"
+	"github.com/dist_task_que_prac/internal/metrics"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -160,15 +161,18 @@ func (w *Worker) processXMessages(ctx context.Context, msgs []redis.XMessage) {
 	for _, entry := range msgs {
 		w.sem <- struct{}{}
 		w.wg.Add(1)
+		metrics.TasksInFlight.Inc()
 		go func(e redis.XMessage) {
 			defer w.wg.Done()
 			defer func() { <-w.sem }()
+			defer metrics.TasksInFlight.Dec()
 			w.process(ctx, e)
 		}(entry)
 	}
 }
 
 func (w *Worker) process(ctx context.Context, entry redis.XMessage) {
+	start := time.Now()
 	msg, err := decode(entry)
 	if err != nil {
 		slog.Error("decode failed", "id", entry.ID, "err", err)
@@ -176,6 +180,8 @@ func (w *Worker) process(ctx context.Context, entry redis.XMessage) {
 			slog.Error("dlq send failed for decode error", "id", entry.ID, "err", dlqErr)
 		}
 		w.xack(ctx, entry.ID)
+		metrics.TasksProcessed.WithLabelValues(string(msg.Type), "decode_failed").Inc()
+		metrics.DLQTotal.WithLabelValues("decode_fail").Inc()
 		return
 	}
 
@@ -187,6 +193,8 @@ func (w *Worker) process(ctx context.Context, entry redis.XMessage) {
 			slog.Error("dlq send failed for unknown handler", "id", entry.ID, "err", dlqErr)
 		}
 		w.xack(ctx, entry.ID)
+		metrics.TasksProcessed.WithLabelValues(string(msg.Type), "no_handler").Inc()
+		metrics.DLQTotal.WithLabelValues("no_handler").Inc()
 		return
 	}
 
@@ -200,6 +208,8 @@ func (w *Worker) process(ctx context.Context, entry redis.XMessage) {
 	}
 
 	w.xack(ctx, entry.ID)
+	metrics.TaskDuration.WithLabelValues(string(msg.Type)).Observe(time.Since(start).Seconds())
+	metrics.TasksProcessed.WithLabelValues(string(msg.Type), "success").Inc()
 	slog.Info("task completed", "task_type", msg.Type, "id", entry.ID)
 }
 
@@ -228,6 +238,8 @@ func (w *Worker) handleFailure(ctx context.Context, entry redis.XMessage, msg Me
 			slog.Error("dlq send failure", "id", entry.ID, "err", dlqErr)
 		}
 		w.xack(ctx, entry.ID)
+		metrics.TasksProcessed.WithLabelValues(string(msg.Type), "failed").Inc()
+		metrics.DLQTotal.WithLabelValues("max_retries").Inc()
 		return
 	}
 	// task stays in PEL; will be reclaimed after ClaimedIdleMs

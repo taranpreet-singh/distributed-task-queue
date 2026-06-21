@@ -1,8 +1,30 @@
+name: distributed_task_queue
+
+x-worker: &worker
+  build:
+    context: .
+    dockerfile: Dockerfile
+    network: host
+    args:
+      CMD: worker
+  environment:
+    REDIS_URL: redis://redis:6379
+    SMTP_HOST: mailhog
+    SMTP_PORT: 1025
+  depends_on:
+    redis:
+      condition: service_healthy
+    mailhog:
+      condition: service_started
+
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:8.8.0-alpine
+    command: redis-server --appendonly yes
     ports:
       - "6379:6379"
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -10,27 +32,19 @@ services:
       retries: 5
 
   mailhog:
-    image: mailhog/mailhog
+    image: mailhog/mailhog:v1.0.1
     ports:
       - "1025:1025"
       - "8025:8025"
 
-  worker:
-    build:
-      context: .
-      args:
-        CMD: worker
-    environment:
-      REDIS_URL: redis://redis:6379
-      SMTP_HOST: mailhog
-      SMTP_PORT: 1025
-    depends_on:
-      redis:
-        condition: service_healthy
-      mailhog:
-        condition: service_started
-    deploy:
-      replicas: 3
+  worker-1:
+    <<: *worker
+
+  worker-2:
+    <<: *worker
+
+  worker-3:
+    <<: *worker
 
   producer:
     build:
@@ -39,8 +53,34 @@ services:
         CMD: producer
     environment:
       REDIS_URL: redis://redis:6379
+      WEBHOOK_URL: ""
     depends_on:
       redis:
         condition: service_healthy
     profiles:
       - tools
+
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+
+  grafana:
+    image: grafana/grafana:12.3.7
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning/datasources
+
+volumes:
+  redis-data:
+  prometheus-data:
+  grafana-data:

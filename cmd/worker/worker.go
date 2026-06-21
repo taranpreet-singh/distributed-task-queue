@@ -5,12 +5,15 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/dist_task_que_prac/internal/config"
 	"github.com/dist_task_que_prac/internal/consumer"
+	_ "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -39,9 +42,16 @@ func main() {
 
 	slog.Info("Worker started", "name", *workerName, "group", cfg.Redis.ConsumerGroupKey, "stream", cfg.Redis.StreamKey)
 
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":2112", mux)
+	}()
+
 	if err := w.Run(ctx); err != nil {
 		slog.Error("Worker entered in an Error", "Error", err)
 		os.Exit(1)
 	}
+
 	slog.Info("Worker shut down cleanly")
 }

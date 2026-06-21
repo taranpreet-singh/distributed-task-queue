@@ -14,8 +14,6 @@ import (
 	"github.com/dist_task_que_prac/internal/producer"
 )
 
-const webhookURL = "https://webhook.site/e440f304-5cf4-401e-9760-ee0c54bbf874" // replace with your webhook.site URL
-
 var emailRecipients = []string{
 	"alice@example.com",
 	"bob@example.com",
@@ -29,7 +27,7 @@ var emailSubjects = []string{
 	"Weekly digest",
 }
 
-func randomWebhookTask(i int) producer.Task {
+func randomWebhookTask(i int, webhookURL string) producer.Task {
 	return producer.Task{
 		Type: string(consumer.TaskSendWebhook),
 		Payload: map[string]any{
@@ -58,11 +56,12 @@ func randomEmailTask(i int) producer.Task {
 }
 
 func main() {
-	count := flag.Int("count", 10, "Number of tasks to produce")
-	delay := flag.Int("delay", 500, "Delay between tasks in ms")
+	count := flag.Int("count", 1000, "Number of tasks to produce")
+	delay := flag.Int("delay", 100, "Delay between tasks in ms")
 	flag.Parse()
 
 	cfg := config.LoadConfig()
+	webhookURL := cfg.WebhookURL
 
 	p, err := producer.New(cfg)
 	if err != nil {
@@ -74,8 +73,8 @@ func main() {
 	ctx := context.Background()
 	for i := range *count {
 		var task producer.Task
-		if rand.Intn(2) == 0 {
-			task = randomWebhookTask(i)
+		if webhookURL != "" && rand.Intn(2) == 0 {
+			task = randomWebhookTask(i, webhookURL)
 		} else {
 			task = randomEmailTask(i)
 		}
