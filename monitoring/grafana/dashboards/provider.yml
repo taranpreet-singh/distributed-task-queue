@@ -1,0 +1,15 @@
+apiVersion: 1
+
+providers:
+  - name: default
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      # Grafana scans this directory for *.json dashboards. It's the same
+      # directory this provider file is mounted into, so the dashboard JSON
+      # sits next to provider.yml (the .yml is ignored by the dashboard scan).
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false
