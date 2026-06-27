@@ -1,0 +1,14 @@
+services:
+  k6:
+    image: grafana/k6:2.0.0
+    volumes:
+      - ./load:/scripts
+    command: run -o experimental-prometheus-rw /scripts/script.js
+    environment:
+      K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
+      K6_PROMETHEUS_RW_TREND_STATS: "p(95),p(99),avg,min,max"
+    depends_on:
+      - api
+      - prometheus
+    profiles:
+      - tools
