@@ -15,7 +15,7 @@ x-worker: &worker
     REDIS_URL: redis://redis:6379
     SMTP_HOST: mailhog
     SMTP_PORT: 1025
-    MAX_RETRIES: 1
+    MAX_RETRIES: 3
   depends_on:
     redis:
       condition: service_healthy
