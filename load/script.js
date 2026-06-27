@@ -16,6 +16,34 @@ function rand(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function emailTask() {
+  return {
+    type: "SendEmail",
+    payload: {
+      to: rand(recipients),
+      subject: rand(subjects),
+      body: "Load test task from k6",
+    },
+  };
+}
+
+function flakyTask() {
+  return {
+    type: "FlakyTask",
+    payload: { fail_rate: 0.5 },
+  };
+}
+
+// noHandlerTask uses a task type the worker has no handler for. It enqueues
+// fine (202) but is dead-lettered immediately with reason "no_handler" —
+// no retries, unlike FlakyTask.
+function noHandlerTask() {
+  return {
+    type: "UnknownTask",
+    payload: {},
+  };
+}
+
 export const options = {
   // Which stats to print for trend metrics (e.g. http_req_duration) in the
   // end-of-test summary. p(99) is not shown by default.
@@ -35,14 +63,20 @@ export const options = {
 };
 
 export default function () {
-  const payload = JSON.stringify({
-    type: "SendEmail",
-    payload: {
-      to: rand(recipients),
-      subject: rand(subjects),
-      body: "Load test task from k6",
-    },
-  });
+  // Weighted mix of task types so the load exercises every worker path:
+  //   ~50% SendEmail    — succeed
+  //   ~35% FlakyTask    — retry, some land in DLQ as "max_retries"
+  //   ~15% UnknownTask  — dead-lettered immediately as "no_handler"
+  const r = Math.random();
+  let task;
+  if (r < 0.5) {
+    task = emailTask();
+  } else if (r < 0.85) {
+    task = flakyTask();
+  } else {
+    task = noHandlerTask();
+  }
+  const payload = JSON.stringify(task);
 
   const res = http.post(`${BASE_URL}/tasks`, payload, {
     headers: { "Content-Type": "application/json" },

@@ -27,19 +27,12 @@ var emailSubjects = []string{
 	"Weekly digest",
 }
 
-func randomWebhookTask(i int, webhookURL string) producer.Task {
+func randomFlakyTask(i int) producer.Task {
 	return producer.Task{
-		Type: string(consumer.TaskSendWebhook),
+		Type: string(consumer.TaskFlaky),
 		Payload: map[string]any{
-			"url": webhookURL,
-			"body": map[string]any{
-				"event": "task.created",
-				"index": i,
-				"data":  fmt.Sprintf("payload-%d", i),
-			},
-			"headers": map[string]any{
-				"X-Task-Index": fmt.Sprintf("%d", i),
-			},
+			"index":     i,
+			"fail_rate": 0.5,
 		},
 	}
 }
@@ -61,7 +54,6 @@ func main() {
 	flag.Parse()
 
 	cfg := config.LoadConfig()
-	webhookURL := cfg.WebhookURL
 
 	p, err := producer.New(cfg)
 	if err != nil {
@@ -73,8 +65,8 @@ func main() {
 	ctx := context.Background()
 	for i := range *count {
 		var task producer.Task
-		if webhookURL != "" && rand.Intn(2) == 0 {
-			task = randomWebhookTask(i, webhookURL)
+		if rand.Intn(2) == 0 {
+			task = randomFlakyTask(i)
 		} else {
 			task = randomEmailTask(i)
 		}

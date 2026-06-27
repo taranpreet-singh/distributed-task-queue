@@ -15,6 +15,7 @@ x-worker: &worker
     REDIS_URL: redis://redis:6379
     SMTP_HOST: mailhog
     SMTP_PORT: 1025
+    MAX_RETRIES: 1
   depends_on:
     redis:
       condition: service_healthy
@@ -70,7 +71,6 @@ services:
         CMD: producer
     environment:
       REDIS_URL: redis://redis:6379
-      WEBHOOK_URL: ""
     depends_on:
       redis:
         condition: service_healthy

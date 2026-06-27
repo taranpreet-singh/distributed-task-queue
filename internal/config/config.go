@@ -11,7 +11,6 @@ type Config struct {
 	SMTP        SMTPConfig
 	MaxRetries  int
 	Concurrency int
-	WebhookURL  string
 }
 
 func LoadConfig() Config {
@@ -24,6 +23,5 @@ func LoadConfig() Config {
 		SMTP:        loadSMTPConfig(),
 		MaxRetries:  getEnvInt("MAX_RETRIES", 3),
 		Concurrency: getEnvInt("CONCURRENCY", 10),
-		WebhookURL:  getEnv("WEBHOOK_URL", ""),
 	}
 }

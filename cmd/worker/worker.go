@@ -34,8 +34,8 @@ func main() {
 	}
 	defer w.Close()
 
-	w.RegisterHandler(consumer.TaskSendWebhook, webhookHandler())
 	w.RegisterHandler(consumer.TaskSendEmail, emailHandler(cfg.SMTP))
+	w.RegisterHandler(consumer.TaskFlaky, flakyHandler())
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

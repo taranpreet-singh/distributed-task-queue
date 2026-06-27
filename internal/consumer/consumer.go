@@ -20,8 +20,8 @@ import (
 type TaskType string
 
 const (
-	TaskSendWebhook TaskType = "SendWebhook"
-	TaskSendEmail   TaskType = "SendEmail"
+	TaskSendEmail TaskType = "SendEmail"
+	TaskFlaky     TaskType = "FlakyTask"
 )
 
 type Message struct {
