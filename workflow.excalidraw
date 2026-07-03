@@ -43,8 +43,8 @@
     {
       "id": "config-box",
       "type": "rectangle",
-      "x": 1040.35477481698,
-      "y": -137.80576182120518,
+      "x": 889.6880878052611,
+      "y": 512.1942076612168,
       "width": 367.5571792006907,
       "height": 303,
       "angle": 0,
@@ -61,8 +61,8 @@
         "type": 3
       },
       "seed": 2,
-      "version": 814,
-      "versionNonce": 612885612,
+      "version": 1054,
+      "versionNonce": 631902420,
       "isDeleted": false,
       "boundElements": [
         {
@@ -70,7 +70,7 @@
           "type": "text"
         }
       ],
-      "updated": 1781900417313,
+      "updated": 1783111234721,
       "link": null,
       "locked": false,
       "index": "a0A"
@@ -78,8 +78,8 @@
     {
       "id": "config-text",
       "type": "text",
-      "x": 1045.35477481698,
-      "y": -132.55576182120518,
+      "x": 894.6880878052611,
+      "y": 517.4442076612168,
       "width": 210.41778564453125,
       "height": 292.5,
       "angle": 0,
@@ -94,11 +94,11 @@
       "frameId": null,
       "roundness": null,
       "seed": 3,
-      "version": 983,
-      "versionNonce": 1150772052,
+      "version": 1223,
+      "versionNonce": 156816980,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1781910786928,
+      "updated": 1783111234721,
       "link": null,
       "locked": false,
       "text": "    Config:\n        - Redis: RedisConfig\n                - URL\n                - StreamKey\n                - ConsumerGroupKey\n                - DLQStreamKey\n                - BlockMs\n                - ClaimedIdleMs,\n                - HeartbeatMs\n                - BatchSize \n         - SMTP: SMTPConfig\n                - Host\n                -Port\n                - User\n                - Pass\n                - From\n         - MaxRetries  \n         - Concurrency",
@@ -177,13 +177,13 @@
       "updated": 1781825305453,
       "link": null,
       "locked": false,
-      "text": "Producer\n\nEmits randomly: SendWebhook  |  SendEmail",
+      "text": "Producer\n\nEmits randomly: SendEmail  |  FlakyTask",
       "fontSize": 16,
       "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "producer",
-      "originalText": "Producer\n\nEmits randomly: SendWebhook  |  SendEmail",
+      "originalText": "Producer\n\nEmits randomly: SendEmail  |  FlakyTask",
       "lineHeight": 1.25,
       "index": "a1V",
       "autoResize": true
@@ -909,8 +909,8 @@
     {
       "id": "heartbeat-box",
       "type": "rectangle",
-      "x": -513.6889362597682,
-      "y": 441.6168333250933,
+      "x": 214.31112477538807,
+      "y": 1000.283520336812,
       "width": 275,
       "height": 80,
       "angle": 0,
@@ -927,8 +927,8 @@
         "type": 3
       },
       "seed": 23,
-      "version": 709,
-      "versionNonce": 228095700,
+      "version": 945,
+      "versionNonce": 276413268,
       "isDeleted": false,
       "boundElements": [
         {
@@ -940,7 +940,7 @@
           "type": "arrow"
         },
         {
-          "id": "arrow-to-http",
+          "id": "arrow-to-flaky",
           "type": "arrow"
         },
         {
@@ -948,7 +948,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1781900501980,
+      "updated": 1783111188577,
       "link": null,
       "locked": false,
       "index": "aE"
@@ -956,8 +956,8 @@
     {
       "id": "heartbeat-label",
       "type": "text",
-      "x": -503.6889362597682,
-      "y": 446.6168333250933,
+      "x": 224.31112477538807,
+      "y": 1005.283520336812,
       "width": 255,
       "height": 70,
       "angle": 0,
@@ -972,11 +972,11 @@
       "frameId": null,
       "roundness": null,
       "seed": 24,
-      "version": 704,
-      "versionNonce": 1921678420,
+      "version": 940,
+      "versionNonce": 30355668,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1781900501980,
+      "updated": 1783111188577,
       "link": null,
       "locked": false,
       "text": "Heartbeat goroutine\nXCLAIM every HeartbeatMs\n(resets idle timer — prevents steal)",
@@ -993,10 +993,10 @@
     {
       "id": "arrow-goroutines-heartbeat",
       "type": "arrow",
-      "x": 9.00046673727617,
-      "y": 484.7910312816518,
-      "width": 242.19069254381785,
-      "height": 2.2816604759516963,
+      "x": 8.857724851191945,
+      "y": 504.6200655790189,
+      "width": 297.5599373338075,
+      "height": 531.6712582790789,
       "angle": 0.000740627253149384,
       "strokeColor": "#e67700",
       "backgroundColor": "transparent",
@@ -1011,8 +1011,8 @@
         "type": 2
       },
       "seed": 25,
-      "version": 1361,
-      "versionNonce": 770178028,
+      "version": 1841,
+      "versionNonce": 1430731604,
       "isDeleted": false,
       "boundElements": [
         {
@@ -1020,7 +1020,7 @@
           "id": "heartbeat-arrow-label"
         }
       ],
-      "updated": 1781900503548,
+      "updated": 1783111194635,
       "link": null,
       "locked": false,
       "points": [
@@ -1029,12 +1029,12 @@
           0
         ],
         [
-          -97.59467699732407,
-          -1.9789216351875893
+          -97.41037252982663,
+          321.65114409880755
         ],
         [
-          -242.19069254381785,
-          -2.2816604759516963
+          200.14956480398087,
+          531.6712582790789
         ]
       ],
       "lastCommittedPoint": null,
@@ -1919,12 +1919,12 @@
     {
       "id": "ext-services-header",
       "type": "text",
-      "x": -550.0634769845549,
-      "y": 842.7711768514387,
+      "x": 177.93658405060137,
+      "y": 1401.4378638631574,
       "width": 255,
       "height": 20,
       "angle": 0,
-      "strokeColor": "#0c8599",
+      "strokeColor": "#1971c2",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1935,11 +1935,11 @@
       "frameId": null,
       "roundness": null,
       "seed": 45,
-      "version": 402,
-      "versionNonce": 9096276,
+      "version": 639,
+      "versionNonce": 326110164,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1781900570611,
+      "updated": 1783111188577,
       "link": null,
       "locked": false,
       "text": "External Services",
@@ -1954,92 +1954,16 @@
       "autoResize": true
     },
     {
-      "id": "http-box",
-      "type": "rectangle",
-      "x": -389.2295742163219,
-      "y": 720.9234888817169,
-      "width": 265,
-      "height": 65,
-      "angle": 0,
-      "strokeColor": "#0c8599",
-      "backgroundColor": "#e3fafc",
-      "fillStyle": "solid",
-      "strokeWidth": 2,
-      "strokeStyle": "solid",
-      "roughness": 1,
-      "opacity": 100,
-      "groupIds": [],
-      "frameId": null,
-      "roundness": {
-        "type": 3
-      },
-      "seed": 46,
-      "version": 979,
-      "versionNonce": 837263468,
-      "isDeleted": false,
-      "boundElements": [
-        {
-          "type": "text",
-          "id": "http-label"
-        },
-        {
-          "id": "arrow-to-http",
-          "type": "arrow"
-        }
-      ],
-      "updated": 1781900518207,
-      "link": null,
-      "locked": false,
-      "index": "aQ"
-    },
-    {
-      "id": "http-label",
-      "type": "text",
-      "x": -379.2295742163219,
-      "y": 730.9234888817169,
-      "width": 245,
-      "height": 45,
-      "angle": 0,
-      "strokeColor": "#0c8599",
-      "backgroundColor": "transparent",
-      "fillStyle": "solid",
-      "strokeWidth": 1,
-      "strokeStyle": "solid",
-      "roughness": 1,
-      "opacity": 100,
-      "groupIds": [],
-      "frameId": null,
-      "roundness": null,
-      "seed": 47,
-      "version": 979,
-      "versionNonce": 1802547948,
-      "isDeleted": false,
-      "boundElements": [],
-      "updated": 1781900518207,
-      "link": null,
-      "locked": false,
-      "text": "HTTP Endpoint\n(SendWebhook: POST, check 2xx)",
-      "fontSize": 14,
-      "fontFamily": 5,
-      "textAlign": "center",
-      "verticalAlign": "middle",
-      "containerId": "http-box",
-      "originalText": "HTTP Endpoint\n(SendWebhook: POST, check 2xx)",
-      "lineHeight": 1.25,
-      "index": "aQV",
-      "autoResize": true
-    },
-    {
       "id": "smtp-box",
       "type": "rectangle",
-      "x": -707.1823601152905,
-      "y": 719.1857688810103,
+      "x": 20.81770091986573,
+      "y": 1277.1858299161665,
       "width": 265,
       "height": 65,
       "angle": 0,
-      "strokeColor": "#0c8599",
-      "backgroundColor": "#e3fafc",
-      "fillStyle": "solid",
+      "strokeColor": "#1971c2",
+      "backgroundColor": "#a5d8ff",
+      "fillStyle": "hachure",
       "strokeWidth": 2,
       "strokeStyle": "solid",
       "roughness": 1,
@@ -2050,8 +1974,8 @@
         "type": 3
       },
       "seed": 48,
-      "version": 579,
-      "versionNonce": 1950123348,
+      "version": 820,
+      "versionNonce": 2098192620,
       "isDeleted": false,
       "boundElements": [
         {
@@ -2063,7 +1987,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1781900507668,
+      "updated": 1783111375855,
       "link": null,
       "locked": false,
       "index": "aR"
@@ -2071,12 +1995,12 @@
     {
       "id": "smtp-label",
       "type": "text",
-      "x": -697.1823601152905,
-      "y": 729.1857688810103,
+      "x": 30.81770091986573,
+      "y": 1287.1858299161665,
       "width": 245,
       "height": 45,
       "angle": 0,
-      "strokeColor": "#0c8599",
+      "strokeColor": "#1971c2",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -2087,11 +2011,11 @@
       "frameId": null,
       "roundness": null,
       "seed": 49,
-      "version": 579,
-      "versionNonce": 917027540,
+      "version": 817,
+      "versionNonce": 1893082836,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1781900507668,
+      "updated": 1783111188577,
       "link": null,
       "locked": false,
       "text": "SMTP Server\n(SendEmail: Mailhog / real provider)",
@@ -2106,116 +2030,14 @@
       "autoResize": true
     },
     {
-      "id": "arrow-to-http",
-      "type": "arrow",
-      "x": -372.8649031389649,
-      "y": 527.1168333250932,
-      "width": 112.56561097267581,
-      "height": 187.8066555566237,
-      "angle": 0,
-      "strokeColor": "#0c8599",
-      "backgroundColor": "transparent",
-      "fillStyle": "solid",
-      "strokeWidth": 1,
-      "strokeStyle": "dashed",
-      "roughness": 1,
-      "opacity": 100,
-      "groupIds": [],
-      "frameId": null,
-      "roundness": {
-        "type": 2
-      },
-      "seed": 50,
-      "version": 1706,
-      "versionNonce": 1731425644,
-      "isDeleted": false,
-      "boundElements": [
-        {
-          "type": "text",
-          "id": "http-arrow-label"
-        }
-      ],
-      "updated": 1781900518207,
-      "link": null,
-      "locked": false,
-      "points": [
-        [
-          0,
-          0
-        ],
-        [
-          112.56561097267581,
-          187.8066555566237
-        ]
-      ],
-      "lastCommittedPoint": null,
-      "startBinding": {
-        "elementId": "heartbeat-box",
-        "mode": "orbit",
-        "fixedPoint": [
-          0.5001,
-          0.9999999999999993
-        ]
-      },
-      "endBinding": {
-        "elementId": "http-box",
-        "mode": "orbit",
-        "fixedPoint": [
-          0.5001,
-          0
-        ]
-      },
-      "startArrowhead": null,
-      "endArrowhead": "arrow",
-      "index": "aS",
-      "moveMidPointsWithElement": false
-    },
-    {
-      "id": "http-arrow-label",
-      "type": "text",
-      "x": 750,
-      "y": 344,
-      "width": 70.81794738769531,
-      "height": 13.75,
-      "angle": 0,
-      "strokeColor": "#0c8599",
-      "backgroundColor": "transparent",
-      "fillStyle": "solid",
-      "strokeWidth": 1,
-      "strokeStyle": "solid",
-      "roughness": 1,
-      "opacity": 100,
-      "groupIds": [],
-      "frameId": null,
-      "roundness": null,
-      "seed": 51,
-      "version": 2,
-      "versionNonce": 753607608,
-      "isDeleted": false,
-      "boundElements": [],
-      "updated": 1781825124940,
-      "link": null,
-      "locked": false,
-      "text": "SendWebhook",
-      "fontSize": 11,
-      "fontFamily": 5,
-      "textAlign": "center",
-      "verticalAlign": "middle",
-      "containerId": "arrow-to-http",
-      "originalText": "SendWebhook",
-      "lineHeight": 1.25,
-      "index": "aSV",
-      "autoResize": true
-    },
-    {
       "id": "arrow-to-smtp",
       "type": "arrow",
-      "x": -381.6872003589344,
-      "y": 527.1168333250932,
-      "width": 186.94055346635656,
-      "height": 186.06893555591705,
+      "x": 346.2941528312163,
+      "y": 1085.783520336812,
+      "width": 186.9014370631631,
+      "height": 185.40230957935455,
       "angle": 0,
-      "strokeColor": "#0c8599",
+      "strokeColor": "#1971c2",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -2228,8 +2050,8 @@
         "type": 2
       },
       "seed": 52,
-      "version": 1173,
-      "versionNonce": 1307285228,
+      "version": 1411,
+      "versionNonce": 43134036,
       "isDeleted": false,
       "boundElements": [
         {
@@ -2237,7 +2059,7 @@
           "id": "smtp-arrow-label"
         }
       ],
-      "updated": 1781900510238,
+      "updated": 1783111188577,
       "link": null,
       "locked": false,
       "points": [
@@ -2246,8 +2068,8 @@
           0
         ],
         [
-          -186.94055346635656,
-          186.06893555591705
+          -186.9014370631631,
+          185.40230957935455
         ]
       ],
       "lastCommittedPoint": null,
@@ -2280,7 +2102,7 @@
       "width": 51.75495910644531,
       "height": 13.75,
       "angle": 0,
-      "strokeColor": "#0c8599",
+      "strokeColor": "#1971c2",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -2291,11 +2113,11 @@
       "frameId": null,
       "roundness": null,
       "seed": 53,
-      "version": 2,
-      "versionNonce": 356712888,
+      "version": 3,
+      "versionNonce": 1911439060,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1781825200405,
+      "updated": 1783111157727,
       "link": null,
       "locked": false,
       "text": "SendEmail",
@@ -2310,10 +2132,188 @@
       "autoResize": true
     },
     {
+      "id": "flaky-box",
+      "type": "rectangle",
+      "x": 338.77048681883434,
+      "y": 1279.5901758934356,
+      "width": 265,
+      "height": 65,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "#a5d8ff",
+      "fillStyle": "hachure",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 61,
+      "version": 244,
+      "versionNonce": 1506089172,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "flaky-label"
+        },
+        {
+          "id": "arrow-to-flaky",
+          "type": "arrow"
+        }
+      ],
+      "updated": 1783111373622,
+      "link": null,
+      "locked": false,
+      "index": "aTZ"
+    },
+    {
+      "id": "flaky-label",
+      "type": "text",
+      "x": 348.77048681883434,
+      "y": 1289.5901758934356,
+      "width": 245,
+      "height": 45,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 62,
+      "version": 239,
+      "versionNonce": 222963540,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1783111188577,
+      "link": null,
+      "locked": false,
+      "text": "Flaky Handler\n(simulated: random success / fail)",
+      "fontSize": 14,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "flaky-box",
+      "originalText": "Flaky Handler\n(simulated: random success / fail)",
+      "lineHeight": 1.25,
+      "index": "aTd",
+      "autoResize": true
+    },
+    {
+      "id": "arrow-to-flaky",
+      "type": "arrow",
+      "x": 355.13515789619134,
+      "y": 1085.783520336812,
+      "width": 112.56561097267581,
+      "height": 187.8066555566237,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "dashed",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 63,
+      "version": 239,
+      "versionNonce": 1639062740,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "flaky-arrow-label"
+        }
+      ],
+      "updated": 1783111188577,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          112.56561097267581,
+          187.8066555566237
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "heartbeat-box",
+        "mode": "orbit",
+        "fixedPoint": [
+          0.5001,
+          0.9999999999999993
+        ]
+      },
+      "endBinding": {
+        "elementId": "flaky-box",
+        "mode": "orbit",
+        "fixedPoint": [
+          0.5001,
+          0
+        ]
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "index": "aTl",
+      "moveMidPointsWithElement": false
+    },
+    {
+      "id": "flaky-arrow-label",
+      "type": "text",
+      "x": -330,
+      "y": 610,
+      "width": 60,
+      "height": 13.75,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 64,
+      "version": 3,
+      "versionNonce": 5460052,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1783111146843,
+      "link": null,
+      "locked": false,
+      "text": "FlakyTask",
+      "fontSize": 11,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "arrow-to-flaky",
+      "originalText": "FlakyTask",
+      "lineHeight": 1.25,
+      "index": "aTt",
+      "autoResize": true
+    },
+    {
       "id": "redis-commands-note",
       "type": "text",
-      "x": 905.0938737824805,
-      "y": 473.7719445588659,
+      "x": 899.7605607941993,
+      "y": 916.4385400178503,
       "width": 410.7315673828125,
       "height": 122.5,
       "angle": 0,
@@ -2328,11 +2328,11 @@
       "frameId": null,
       "roundness": null,
       "seed": 54,
-      "version": 392,
-      "versionNonce": 1595373932,
+      "version": 615,
+      "versionNonce": 850940012,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1781910725201,
+      "updated": 1783111245146,
       "link": null,
       "locked": false,
       "text": "Redis Commands:\n- XADD → add msg to stream (MaxLen ~100k, Approx=true)\n- XREADGROUP \">\" → read undelivered, add to PEL\n- XAUTOCLAIM → reclaim idle PEL entries (cursor loop)\n- XCLAIM (MinIdle=0) → heartbeat: reset idle timer\n- XACK → remove from PEL on success / DLQ\n- XPendingExt → read PEL delivery count for retry logic",
@@ -2349,8 +2349,8 @@
     {
       "id": "shutdown-note",
       "type": "text",
-      "x": 898.7403113030028,
-      "y": 619.7641407866914,
+      "x": 893.4069983147216,
+      "y": 1062.4307362456757,
       "width": 294.209716796875,
       "height": 70,
       "angle": 0,
@@ -2365,11 +2365,11 @@
       "frameId": null,
       "roundness": null,
       "seed": 55,
-      "version": 379,
-      "versionNonce": 1720531052,
+      "version": 602,
+      "versionNonce": 1856725740,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1781910862660,
+      "updated": 1783111245146,
       "link": null,
       "locked": false,
       "text": "Graceful Shutdown (SIGINT / SIGTERM):\n- signal.NotifyContext cancels ctx\n- Run() loop exits on ctx.Done()\n- defer w.Close() → wg.Wait() + rdb.Close()",
@@ -2386,8 +2386,8 @@
     {
       "id": "ynacI_OmWNE8avthg6BgC",
       "type": "text",
-      "x": 1182.2160598266507,
-      "y": 180.46835032767592,
+      "x": 1031.549372814932,
+      "y": 830.4683198100979,
       "width": 57.50395202636719,
       "height": 20,
       "angle": 0,
@@ -2403,11 +2403,11 @@
       "index": "aY",
       "roundness": null,
       "seed": 427324600,
-      "version": 429,
-      "versionNonce": 864526316,
+      "version": 669,
+      "versionNonce": 1712516052,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1781900419408,
+      "updated": 1783111234721,
       "link": null,
       "locked": false,
       "text": "Configs",
@@ -2423,8 +2423,8 @@
     {
       "id": "XkoxYnVC0mMe55alYGbsi",
       "type": "rectangle",
-      "x": -773.2709876202539,
-      "y": 667.6862561400612,
+      "x": -45.27092658509764,
+      "y": 1226.35294315178,
       "width": 706.0317411456647,
       "height": 157.11325648969137,
       "angle": 0,
@@ -2442,11 +2442,11 @@
         "type": 3
       },
       "seed": 558762604,
-      "version": 143,
-      "versionNonce": 399954796,
+      "version": 379,
+      "versionNonce": 545219156,
       "isDeleted": false,
-      "boundElements": null,
-      "updated": 1781900538913,
+      "boundElements": [],
+      "updated": 1783111188577,
       "link": null,
       "locked": false
     },
@@ -2473,7 +2473,7 @@
       "version": 16,
       "versionNonce": 1457207020,
       "isDeleted": true,
-      "boundElements": null,
+      "boundElements": [],
       "updated": 1781900568535,
       "link": null,
       "locked": false,
