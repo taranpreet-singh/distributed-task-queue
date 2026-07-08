@@ -17,12 +17,13 @@ docker compose up -d --build
 
 **Publish tasks:**
 
-- Flags that can be used for docker producer tools profile:
-  - **count:** Number of tasks (Default 1000).
-  - **delay:** Delay in Ms added between task insertions ( Default 100).
+Producer flags:
+
+- **`--count`:** number of tasks (default 1000).
+- **`--delay`:** ms between task insertions (default 100).
 
 ```bash
-# Populates a batch of tasks(1000 by default) via the producer CLI. Task type will be randomly chosen.
+# Publish a batch of tasks (1000 by default) via the producer CLI; task type is chosen at random.
 docker compose --profile tools run --rm producer --count 500 --delay 0
 
 # or a single task via the HTTP API
@@ -45,7 +46,7 @@ Sent emails land in MailHog's web UI; task metrics show up on the Grafana dashbo
 
 ## Architecture
 
-![architecture](workflow.png)
+![architecture](assets/workflow.png)
 
 ### How a task flows through the system
 
@@ -60,7 +61,7 @@ Sent emails land in MailHog's web UI; task metrics show up on the Grafana dashbo
 
 > **Note:** Reclaiming the DLQ (`task:dlq`) is a manual step; automatic reclaim only works the main stream's PEL, so dead-lettered tasks are never reprocessed on their own.
 
-Throughout, each worker exposes metrics at `:2112/metrics`, scraped by Prometheus (`http://localhost:9090`) and shown in Grafana (`http://localhost:3000`, login `admin` / `admin`).
+Throughout, each worker exposes metrics at `:2112/metrics`, scraped by Prometheus and shown in Grafana.
 
 ## Tech stack
 
@@ -78,10 +79,11 @@ Throughout, each worker exposes metrics at `:2112/metrics`, scraped by Prometheu
 
 ```
 .
-├── cmd/           # entry points — api (HTTP), worker, producer (CLI)
-├── internal/      # engine — config, consumer (queue logic), producer, dlq, metrics
+├── cmd/           # entry points: api (HTTP), worker, producer (CLI)
+├── internal/      # engine: config, consumer (queue logic), producer, dlq, metrics
 ├── monitoring/    # Prometheus scrape config + provisioned Grafana dashboards
 ├── load/          # k6 load-test script + its compose file
+├── assets/        # README images (architecture diagram + dashboard screenshot)
 ├── docker-compose.yml
 └── Dockerfile     # multi-stage; one image builds any binary via a CMD build-arg
 ```
@@ -111,6 +113,8 @@ All configuration is via environment variables (12-factor). Defaults shown:
 
 Open **Grafana** at http://localhost:3000 (`admin` / `admin`). The Prometheus datasource and dashboards are **provisioned from files** (`monitoring/grafana/`), so they load automatically and survive a volume wipe.
 
+![Grafana dashboard](assets/dashboard.png)
+
 Each worker exposes Prometheus metrics on `:2112/metrics`; Prometheus scrapes all three:
 
 | Metric                  | Type      | Meaning                                      |
@@ -122,7 +126,7 @@ Each worker exposes Prometheus metrics on `:2112/metrics`; Prometheus scrapes al
 
 ## Load & chaos testing
 
-Run the k6 load test — it ramps 50 virtual users, sends a mix of `SendEmail`/`FlakyTask`/`UnknownTask`, and enforces p95/error-rate thresholds that double as a CI gate:
+Run the k6 load test; it ramps 50 virtual users, sends a mix of `SendEmail`/`FlakyTask`/`UnknownTask`, and enforces p95/error-rate thresholds that double as a CI gate:
 
 ```bash
 docker compose --profile tools run --rm k6
@@ -136,7 +140,7 @@ Sample run (50 VUs, ~2 min, on a laptop):
 | Processing (workers) | ~2,500 tasks/s; in-flight capped at `CONCURRENCY` (10/worker) |
 | Latency              | enqueue p95 ~10 ms; handler p95 ~5–45 ms                     |
 
-The ~13k-in / ~2.5k-out gap is the queue absorbing the burst. k6's 0% covers the **enqueue** path only — flaky/unknown tasks fail downstream by design and land in the DLQ. k6's metrics also stream to Grafana via remote-write.
+The ~13k-in / ~2.5k-out gap is the queue absorbing the burst. k6's 0% covers the **enqueue** path only; flaky/unknown tasks fail downstream by design and land in the DLQ. k6's metrics also stream to Grafana via remote-write.
 
 **Chaos tested:** stop Redis mid-load → requests fail fast, then resume when it returns (streams survive via AOF); kill a worker → the others absorb the load and reclaim its tasks via `XAUTOCLAIM`.
 
